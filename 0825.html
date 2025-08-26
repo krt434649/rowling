@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>七夕轉盤</title>
+  <style>
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top, #1a103d, #2b1d4d 40%, #120a24 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+      font-family: "Microsoft JhengHei", sans-serif;
+    }
+
+    /* 星空閃爍效果 */
+    body::before {
+      content: "";
+      position: absolute;
+      width: 200%;
+      height: 200%;
+      background: transparent url("https://www.transparenttextures.com/patterns/stardust.png") repeat;
+      background-size: 400px; /* 縮小或放大來調整星星密度 */
+      animation: starMove 60s linear infinite;
+      opacity: 0.8; /* 調亮 */
+      filter: brightness(1.6) contrast(1.2); /* 提高亮度和對比 */
+    }
+
+    @keyframes starMove {
+      from { transform: translate(0,0); }
+      to { transform: translate(-400px,-400px); }
+    }
+
+    canvas {
+      width: 80vmin;
+      height: 80vmin;
+      border-radius: 50%;
+      box-shadow: 0 0 35px rgba(255,200,255,0.6), 0 0 70px rgba(255,200,255,0.25);
+      z-index: 1;
+      background: radial-gradient(circle at center, #ffd6f9, #b565f9);
+    }
+
+    #bookTitle {
+      position: absolute;
+      top: 8%;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10vw;
+      font-weight: bold;
+      color: #ffe8b5;
+      text-shadow: 0 0 12px rgba(218, 102, 218, 0.9), 0 0 18px rgba(255,180,255,0.6);
+      z-index: 2;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="bookTitle"></div>
+  <canvas id="wheel"></canvas>
+
+  <script>
+    const canvas = document.getElementById('wheel');
+    const ctx = canvas.getContext('2d');
+    const bookTitle = document.getElementById('bookTitle');
+
+    function resizeCanvas() {
+      const size = Math.min(window.innerWidth, window.innerHeight) * 0.8;
+      canvas.width = size;
+      canvas.height = size;
+
+      const cx = window.innerWidth / 2;
+      const cy = window.innerHeight / 2;
+      bookTitle.style.left = cx + "px";
+      bookTitle.style.top = (cy - size/2 - 40) + "px"; // 指針上方
+      bookTitle.style.fontSize = (size * 0.08) + "px"; // 字體大小隨轉盤縮放
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    const items = [
+      {img:'月老碎片.png', title:'🌙 恭喜中獎！'},
+      {img:'月老碎片.png', title:'💔 請再接再厲'},
+      {img:'月老碎片.png', title:'😢 不是這個喔~'},
+      {img:'月老碎片.png', title:'✨ 再試一次吧'},
+      {img:'月老碎片.png', title:'💫 快轉到了…'},
+      {img:'月老.png', title:'🌸 緣分+1'},
+      {img:'月老碎片.png', title:'🔮 很接近了!'},
+      {img:'月老碎片.png', title:'🎁 獲得碎片一枚'},
+    ];
+
+    let loaded = 0;
+    items.forEach(it => {
+      const img = new Image();
+      img.src = it.img;
+      img.onload = () => { it.image = img; loaded++; }
+    });
+
+    let angle = 0;
+    const speed = 800; // 每秒旋轉角度
+    let isSpinning = true; // 是否在轉動
+
+    function drawWheel(a){
+      const W = canvas.width, H = canvas.height;
+      const cx = W/2, cy = H/2;
+      const R = W/2 - 20;
+
+      ctx.clearRect(0,0,W,H);
+      ctx.save();
+      ctx.translate(cx,cy);
+      ctx.rotate(a*Math.PI/180);
+
+      const n = items.length;
+      const step = 2*Math.PI/n;
+
+      for(let i=0;i<n;i++){
+        const start = i*step;
+        const end = start+step;
+
+        ctx.beginPath();
+        ctx.moveTo(0,0);
+        ctx.arc(0,0,R,start,end);
+        ctx.closePath();
+
+        const colors = ["#ffb3f9", "#d28bff", "#a768ff", "#8741c7"];
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fill();
+
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.2)"; // 邊框白色線條
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        if(items[i].image){
+          ctx.save();
+          ctx.rotate(start + step/2);
+          ctx.translate(R*0.65, 0);
+          ctx.rotate(Math.PI/2);
+
+          const size = R * 0.45;
+          ctx.drawImage(items[i].image, -size/2, -size/2, size, size);
+          ctx.restore();
+        }
+      }
+      ctx.restore();
+
+      // 金色指針
+      ctx.fillStyle = '#ffd86b';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - R + 25);
+      ctx.lineTo(cx - 18, cy - R - 8);
+      ctx.lineTo(cx + 18, cy - R - 8);
+      ctx.closePath();
+      ctx.fill();
+
+      const idx = Math.floor(((angle % 360) / 360 * n)) % n;
+      bookTitle.textContent = items[idx].title;
+    }
+
+    let last = performance.now();
+    function loop(now){
+      const dt = (now-last)/1000;
+      last = now;
+      if(isSpinning){
+        angle = (angle + speed*dt)%360;
+      }
+      if(loaded===items.length){
+        drawWheel(angle);
+      }
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    // 空白鍵控制旋轉/暫停
+    window.addEventListener("keydown", (e) => {
+      if(e.code === "Space"){ 
+        e.preventDefault(); // 避免空白鍵捲動畫面
+        isSpinning = !isSpinning;
+      }
+    });
+  </script>
+</body>
+</html>
